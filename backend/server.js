@@ -3,13 +3,21 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
-const xssClean = require('xss-clean');
 const morgan = require('morgan');
 const connectDB = require('./config/db');
 const { generalLimiter } = require('./middleware/rateLimiter');
 
+// Simple XSS sanitizer (replaces deprecated xss-clean package)
+const xssSanitize = (req, res, next) => {
+    const sanitize = (str) => typeof str === 'string' ? str.replace(/</g, '&lt;').replace(/>/g, '&gt;') : str;
+    const deep = (obj) => { if (obj && typeof obj === 'object') Object.keys(obj).forEach(k => { obj[k] = typeof obj[k] === 'string' ? sanitize(obj[k]) : deep(obj[k]); }); return obj; };
+    if (req.body) deep(req.body);
+    if (req.query) deep(req.query);
+    next();
+};
+
 // Connect to MongoDB
-connectDB();
+connectDB().catch(err => console.error('MongoDB connection error:', err.message));
 
 const app = express();
 
@@ -36,7 +44,7 @@ app.use(cors({
 }));
 app.use(generalLimiter);
 app.use(mongoSanitize());   // Prevent NoSQL injection
-app.use(xssClean());        // Sanitize XSS
+app.use(xssSanitize);       // Sanitize XSS
 
 // ─── Body Parsers ────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
