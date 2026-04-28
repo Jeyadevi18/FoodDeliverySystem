@@ -76,18 +76,18 @@ exports.googleAuth = async (req, res) => {
                 await user.save();
             }
         } else {
-            // Create new user from Google data
+            // Create new user from Google data — always customer unless pre-seeded
             user = await User.create({
                 name,
                 email,
                 googleId,
                 avatar: picture || '',
                 isGoogle: true,
-                role: role || 'customer', // default to customer
+                role: 'customer', // always customer for brand-new signups
                 phone: '',
                 address: '',
             });
-            console.log('🆕 New user created from Google:', email);
+            console.log('🆕 New customer created from Google:', email);
         }
 
         const token = generateToken(user._id, user.role);

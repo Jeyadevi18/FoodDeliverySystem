@@ -6,17 +6,10 @@ import toast from 'react-hot-toast';
 
 const GOOGLE_CLIENT_ID = '1024138367516-9p7g6efbcqhtcjrno5etllmleid1f895.apps.googleusercontent.com';
 
-const ROLE_CONFIG = {
-    customer: { icon: '🧑‍💼', label: 'Customer', color: '#ff6b35' },
-    delivery: { icon: '🚴', label: 'Delivery Agent', color: '#4ecdc4' },
-    admin: { icon: '⚙️', label: 'Admin', color: '#667eea' },
-};
-
 const Login = () => {
     const { login, updateUser } = useAuth();
     const navigate = useNavigate();
     const [form, setForm] = useState({ email: '', password: '' });
-    const [role, setRole] = useState('customer');
     const [loading, setLoading] = useState(false);
 
     const redirectToDashboard = (userRole) => {
@@ -39,39 +32,31 @@ const Login = () => {
         } else {
             initGoogle();
         }
-        return () => { };
-    }, [role]);
+    }, []);
 
     const initGoogle = () => {
-        if (!window.google) return;
+        if (!window.google) { setTimeout(initGoogle, 500); return; }
         window.google.accounts.id.initialize({
             client_id: GOOGLE_CLIENT_ID,
             callback: handleGoogleResponse,
         });
-        window.google.accounts.id.renderButton(
-            document.getElementById('google-btn-login'),
-            {
-                theme: 'filled_black',
-                size: 'large',
-                width: '100%',
-                text: 'signin_with',
-                shape: 'rectangular',
-            }
-        );
+        const btn = document.getElementById('google-btn-login');
+        if (btn) {
+            window.google.accounts.id.renderButton(btn, {
+                theme: 'filled_black', size: 'large', width: '100%',
+                text: 'signin_with', shape: 'rectangular',
+            });
+        }
     };
 
     const handleGoogleResponse = async (response) => {
         try {
             setLoading(true);
-            const { data } = await api.post('/auth/google', {
-                credential: response.credential,
-                role: role,
-            });
+            const { data } = await api.post('/auth/google', { credential: response.credential });
             localStorage.setItem('fds_token', data.token);
             localStorage.setItem('fds_user', JSON.stringify(data.user));
             updateUser(data.user);
             toast.success(`Welcome${data.user.name ? ', ' + data.user.name.split(' ')[0] : ''}! 🎉`);
-            console.log('✅ Google login success:', data.user);
             redirectToDashboard(data.user.role);
         } catch (err) {
             toast.error(err.response?.data?.message || 'Google sign-in failed');
@@ -108,7 +93,7 @@ const Login = () => {
                         background: `radial-gradient(circle, ${c}, transparent 70%)`,
                         top: `${[20, 60, 40][i]}%`, left: `${[80, 10, 50][i]}%`,
                         transform: 'translate(-50%,-50%)',
-                        animation: `float ${4 + i}s ease-in-out infinite`, animationDelay: `${i * 0.5}s`
+                        animation: `float ${4 + i}s ease-in-out infinite`, animationDelay: `${i * 0.5}s`,
                     }} />
                 ))}
             </div>
@@ -121,31 +106,37 @@ const Login = () => {
                             width: 72, height: 72, borderRadius: 20, margin: '0 auto 14px',
                             background: 'linear-gradient(135deg,#ff6b35,#f7c948)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: '2rem', boxShadow: '0 8px 30px rgba(255,107,53,0.4)'
+                            fontSize: '2rem', boxShadow: '0 8px 30px rgba(255,107,53,0.4)',
                         }}>🍕</div>
                         <h2 style={{ marginBottom: 4 }}>Welcome Back!</h2>
                         <p style={{ fontSize: '0.9rem' }}>Sign in to your FoodDeliver account</p>
                     </div>
 
-                    {/* Role selector */}
-                    <div style={{ display: 'flex', gap: 6, marginBottom: 24, background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 4 }}>
-                        {Object.entries(ROLE_CONFIG).map(([r, cfg]) => (
-                            <button key={r} onClick={() => setRole(r)} style={{
-                                flex: 1, padding: '10px 4px', border: 'none', cursor: 'pointer',
-                                borderRadius: 10, fontFamily: 'Outfit', fontSize: '0.78rem', fontWeight: 600,
-                                transition: 'all 0.3s',
-                                background: role === r ? `${cfg.color}22` : 'transparent',
-                                color: role === r ? cfg.color : 'var(--text-muted)',
+                    {/* Info chips */}
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 24 }}>
+                        {[
+                            { icon: '⚙️', label: 'Admin', color: '#667eea' },
+                            { icon: '🚴', label: 'Delivery Agent', color: '#4ecdc4' },
+                            { icon: '🧑‍💼', label: 'Customer', color: '#ff6b35' },
+                        ].map(r => (
+                            <div key={r.label} style={{
+                                display: 'flex', alignItems: 'center', gap: 5,
+                                padding: '5px 12px', borderRadius: 100,
+                                background: `${r.color}18`, border: `1px solid ${r.color}44`,
+                                fontSize: '0.78rem', fontWeight: 600, color: r.color,
                             }}>
-                                {cfg.icon} {cfg.label}
-                            </button>
+                                {r.icon} {r.label}
+                            </div>
                         ))}
                     </div>
+                    <p style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 20 }}>
+                        Your role is determined automatically based on your account.
+                    </p>
 
                     {/* Google Sign-In Button */}
                     <div style={{ marginBottom: 20 }}>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', marginBottom: 10 }}>
-                            Sign in as <strong style={{ color: ROLE_CONFIG[role].color }}>{ROLE_CONFIG[role].label}</strong> with Google
+                            Sign in with Google
                         </div>
                         <div id="google-btn-login" style={{ display: 'flex', justifyContent: 'center', minHeight: 44 }} />
                     </div>
@@ -170,12 +161,24 @@ const Login = () => {
                                 value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required />
                         </div>
                         <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
-                            {loading ? '⏳ Signing in...' : `Sign in as ${ROLE_CONFIG[role].label} →`}
+                            {loading ? '⏳ Signing in...' : 'Sign In →'}
                         </button>
                     </form>
 
-                    <div style={{ textAlign: 'center', marginTop: 20, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                        Don't have an account?{' '}
+                    {/* Hint box */}
+                    <div style={{
+                        marginTop: 20, padding: '12px 16px', borderRadius: 12,
+                        background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                        fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.6,
+                    }}>
+                        <strong style={{ color: 'var(--text-secondary)' }}>ℹ️ Default Passwords</strong><br />
+                        Admin: <code style={{ color: '#667eea' }}>Admin@1234</code><br />
+                        Delivery agents: <code style={{ color: '#4ecdc4' }}>Delivery@1234</code><br />
+                        Customers: register below or use Google ↓
+                    </div>
+
+                    <div style={{ textAlign: 'center', marginTop: 16, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                        New customer?{' '}
                         <Link to="/register" style={{ color: 'var(--primary)', fontWeight: 600 }}>Register free</Link>
                     </div>
                 </div>

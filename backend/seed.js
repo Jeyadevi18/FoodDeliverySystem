@@ -1,8 +1,5 @@
 /**
- * Seed Script — Creates real user accounts for Google Sign-In
- * These emails are pre-registered with their roles.
- * When they sign in with Google, the backend finds their email and logs them in with the correct role.
- *
+ * Seed Script — Creates Admin & Delivery Agent accounts with passwords
  * Run: node seed.js
  */
 require('dotenv').config();
@@ -12,38 +9,35 @@ const User = require('./models/User');
 const USERS = [
     // ─── Admin ───────────────────────────────────────────────
     {
-        name: 'Jeyadevis (Admin)',
+        name: 'Jeyadevi (Admin)',
         email: 'jeyadevi1711@gmail.com',
+        password: 'Admin@1234',
         role: 'admin',
         phone: '',
-        isGoogle: false, // can login with Google OR email/password
+        isGoogle: false,
     },
 
     // ─── Delivery Agents ─────────────────────────────────────
     {
-        name: 'Kaviya Kannan',
-        email: 'kaviyakannan73@gmail.com',
-        role: 'delivery',
-        phone: '',
-        isGoogle: false,
-    },
-    {
         name: 'Malar Kodirkodi',
         email: 'malarkodirkodi@gmail.com',
+        password: 'Delivery@1234',
         role: 'delivery',
         phone: '',
         isGoogle: false,
     },
     {
-        name: 'Jeyadevis17',
-        email: 'jeyadevis17@gmail.com',
+        name: 'Jeyaselva',
+        email: 'jeyaselva17@gmail.com',
+        password: 'Delivery@1234',
         role: 'delivery',
         phone: '',
         isGoogle: false,
     },
     {
-        name: 'Malar Koodir',
-        email: 'malarkoodir2006@gmail.com', // fixed typo: gmal → gmail
+        name: 'Kaviya Kannan',
+        email: 'kaviyakannan73@gmail.com',
+        password: 'Delivery@1234',
         role: 'delivery',
         phone: '',
         isGoogle: false,
@@ -56,30 +50,30 @@ const seed = async () => {
         console.log('✅ MongoDB Atlas connected\n');
 
         for (const u of USERS) {
-            // Check if already exists
             const existing = await User.findOne({ email: u.email });
             if (existing) {
-                // Just update role if needed
+                // Update role and reset password
                 existing.role = u.role;
                 existing.name = u.name;
-                await existing.save({ validateBeforeSave: false });
-                console.log(`🔄 Updated  [${u.role.toUpperCase().padEnd(8)}] ${u.email}`);
+                existing.password = u.password;   // will be hashed by pre-save hook
+                existing.isGoogle = false;
+                await existing.save();
+                console.log(`🔄 Updated  [${u.role.toUpperCase().padEnd(9)}] ${u.email}`);
             } else {
                 await User.create({ ...u, avatar: '', address: '', location: {} });
-                console.log(`✅ Created  [${u.role.toUpperCase().padEnd(8)}] ${u.email}`);
+                console.log(`✅ Created  [${u.role.toUpperCase().padEnd(9)}] ${u.email}`);
             }
         }
 
-        console.log('\n🎉 Seeding complete!');
+        console.log('\n─────────────────────────────────────────────');
+        console.log('🎉 Seeding complete!');
+        console.log('\nLogin credentials:');
+        console.log('  Admin    → jeyadevi1711@gmail.com   / Admin@1234');
+        console.log('  Delivery → malarkodirkodi@gmail.com / Delivery@1234');
+        console.log('  Delivery → jeyaselva17@gmail.com    / Delivery@1234');
+        console.log('  Delivery → kaviyakannan73@gmail.com / Delivery@1234');
+        console.log('  Customer → any new email / register yourself');
         console.log('─────────────────────────────────────────────');
-        console.log('How to login:');
-        console.log('  1. Go to http://localhost:5173/login');
-        console.log('  2. Select your role (Admin / Delivery / Customer)');
-        console.log('  3. Click "Sign in with Google"');
-        console.log('  4. Use the Gmail account listed above');
-        console.log('  5. You will be automatically logged in with the correct role!');
-        console.log('─────────────────────────────────────────────');
-        console.log('\nCustomers: Any Gmail user can sign in → auto-registered as Customer');
         process.exit(0);
     } catch (err) {
         console.error('❌ Seed error:', err.message);

@@ -1,5 +1,7 @@
 const Order = require('../models/Order');
 const FoodItem = require('../models/FoodItem');
+const User = require('../models/User');
+const { sendAssignmentEmail } = require('../utils/sendEmail');
 
 // @desc    Place order (Customer)
 // @route   POST /api/orders
@@ -105,8 +107,34 @@ exports.assignDeliveryAgent = async (req, res) => {
             req.params.id,
             updateData,
             { new: true }
-        ).populate('deliveryAgent', 'name phone');
+        )
+            .populate('deliveryAgent', 'name email phone')
+            .populate('customer', 'name');
+
         if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+        // ── Send email notification to the delivery agent ──
+        if (deliveryAgentId && order.deliveryAgent?.email) {
+            try {
+                await sendAssignmentEmail({
+                    agentEmail: order.deliveryAgent.email,
+                    agentName: order.deliveryAgent.name || 'Delivery Agent',
+                    orderId: order._id.toString(),
+                    customerName: order.customer?.name || 'Customer',
+                    deliveryAddress: order.deliveryAddress,
+                    totalAmount: order.totalAmount.toFixed(2),
+                    items: order.items.map((i) => ({
+                        name: i.name,
+                        quantity: i.quantity,
+                        price: i.price,
+                    })),
+                });
+                console.log(`✅ Assignment email sent to ${order.deliveryAgent.email}`);
+            } catch (emailErr) {
+                console.error('⚠️  Email send failed (non-blocking):', emailErr.message);
+            }
+        }
+
         res.json({ success: true, order });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
