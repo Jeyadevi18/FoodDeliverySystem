@@ -75,6 +75,8 @@ app.set('io', io);
 app.use(helmet({ contentSecurityPolicy: false }));
 const ALLOWED_ORIGINS = [
     /^http:\/\/localhost(:\d+)?$/,
+    'https://food-delivery-system-wheat.vercel.app',
+    /\.vercel\.app$/,
     process.env.CLIENT_URL,
 ].filter(Boolean);
 
@@ -87,7 +89,7 @@ app.use(cors({
         if (allowed) callback(null, true);
         else callback(new Error('Not allowed by CORS'));
     },
-    credentials: true,
+    credentials: false,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
 }));
 app.use(generalLimiter);
